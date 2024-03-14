@@ -32,6 +32,13 @@ head(dic_train)
 glimpse(dic_train)
 ```
 
+## Choose Model Algorithm:
+
+We chose...... because ......
+```{r warning = FALSE, message = FALSE}
+#Options: KNN, RF, Decision Tree, Clustering, Bagged Tree, Boosted Tree, SVM, Neural Net
+```
+
 ## Pre-Processing:
 
 ```{r warning = FALSE, message = FALSE}
@@ -52,12 +59,6 @@ dic_workflow = workflow() %>%
   add_recipe(dic_rec)
 ```
 
-## Choose Model Algorithm:
-
-We chose...... because ......
-```{r warning = FALSE, message = FALSE}
-#Options: KNN, RF, Decision Tree, Clustering, Bagged Tree, Boosted Tree, SVM, Neural Net
-```
 
 ## Tune Relevant Parameters (Cross validation):
 
@@ -67,14 +68,20 @@ set.seed(1234)
 folds <-vfold_cv(dic_train, strata = DIC)
 
 #Set up Grid ---
-
-
+#which one to use will depend on our model....?
+grid <- grid_regular(cost(), levels = 10)
+grid <- expand.grid(learn_rate = seq(0.0001, 0.3, length.out = 30))
+grid <- grid_latin_hypercube(trees(),
+                                  tree_depth(),
+                                  loss_reduction(),
+                                  min_n(),
+                                  size = 10)
 
 #Tune the Model ---
 fit_dic <- dic_workflow %>% 
 tune_grid(
   resamples = folds,
- grid = #add grid name here) 
+ grid = grid) 
 ```
 
 ## Final Predictions:
@@ -95,5 +102,6 @@ predict_model = predict(fit_model, dic_test) %>%
 # Store accuracy of testing prediction ---
 accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class)
 
-View(accuracy)
+print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with this model."))
+
 ```

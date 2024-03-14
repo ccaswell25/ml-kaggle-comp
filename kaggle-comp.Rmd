@@ -1,5 +1,14 @@
-Load Libraries:
-```{r}
+# Overview:
+
+The final lab for our Machine Learning course will be to train models to predict dissolved inorganic carbon in water samples collected by the California Cooperative Oceanic Fisheries Investigations program (CalCOFI). This is a part of a class-wide Kaggle competition, completed on March 23rd.
+
+This data will be used to train a model that will predict dissolved inorganic carbon (DIC) content in water samples from CalCOFI.
+
+Details on the database are located here: <https://calcofi.org/data/oceanographic-data/bottle-database/>
+
+## Load Libraries:
+
+```{r warning = FALSE, message = FALSE}
 library(tidymodels)
 library(dplyr)
 library(here)
@@ -7,34 +16,56 @@ library(tidyverse)
 library(kernlab)
 ```
 
+## Read in the Data:
 
-Read in the data:
-```{r}
+```{r warning = FALSE, message = FALSE}
+dic_train <- read_csv(here("train.csv"))
+dic_test <- read_csv(here("test.csv"))
+```
+
+## Explore the Data:
+
+```{r warning = FALSE, message = FALSE}
+# Data Exploration ---
+head(dic_train)
+
+glimpse(dic_train)
+```
+
+## Pre-Processing:
+
+```{r warning = FALSE, message = FALSE}
+# Create the recipe ---
+dic_rec <- recipe(DIC ~ ., data = dic_train) %>% 
+  step_zv(all_predictors()) %>% #is this needed?
+  step_center(all_numeric_predictors()) %>% 
+  step_scale(all_numeric_predictors())
+  
+# Preprocessing ---
+dic_model <- rand_forest(mtry = tune(), trees = tune()) %>% #this will change depending on what model we choose
+  set_engine("randomForest") %>% #this will change depending on what model we choose
+  set_mode("regression")
+
+# Specifying Workflow ---
+dic_workflow = workflow() %>% 
+  add_model(dic_model) %>% 
+  add_recipe(dic_rec)
+```
+
+## Choose Model Algorithm:
+
+```{r warning = FALSE, message = FALSE}
 
 ```
 
-Explore the data:
-```{r}
+## Tune Relevant Parameters (Cross validation):
+
+```{r warning = FALSE, message = FALSE}
 
 ```
 
-Preprocessing:
-```{r}
+## Final Predictions:
+
+```{r warning = FALSE, message = FALSE}
 
 ```
-
-Choose a model algorithm:
-```{r}
-
-```
-
-Tune relevant parameters (Cross validation):
-```{r}
-
-```
-
-Final Predictions:
-```{r}
-
-```
-

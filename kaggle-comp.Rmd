@@ -1,0 +1,40 @@
+Load Libraries:
+```{r}
+library(tidymodels)
+library(dplyr)
+library(here)
+library(tidyverse)
+library(kernlab)
+```
+
+
+Read in the data:
+```{r}
+
+```
+
+Explore the data:
+```{r}
+
+```
+
+Preprocessing:
+```{r}
+
+```
+
+Choose a model algorithm:
+```{r}
+
+```
+
+Tune relevant parameters (Cross validation):
+```{r}
+
+```
+
+Final Predictions:
+```{r}
+
+```
+

@@ -54,18 +54,46 @@ dic_workflow = workflow() %>%
 
 ## Choose Model Algorithm:
 
+We chose...... because ......
 ```{r warning = FALSE, message = FALSE}
-
+#Options: KNN, RF, Decision Tree, Clustering, Bagged Tree, Boosted Tree, SVM, Neural Net
 ```
 
 ## Tune Relevant Parameters (Cross validation):
 
 ```{r warning = FALSE, message = FALSE}
+#Creating folds for cross validation ---
+set.seed(1234)
+folds <-vfold_cv(dic_train, strata = DIC)
 
+#Set up Grid ---
+
+
+
+#Tune the Model ---
+fit_dic <- dic_workflow %>% 
+tune_grid(
+  resamples = folds,
+ grid = #add grid name here) 
 ```
 
 ## Final Predictions:
 
 ```{r warning = FALSE, message = FALSE}
+# Final Predictions ---
+# Finalizing workflow with best metrics ---
+best_model_params = dic_workflow %>% 
+  finalize_workflow(select_best(fit_dic, metric = "accuracy"))
 
+# Fit the model to the training set ---
+ fit_model = fit(best_model_params, dic_train)
+
+# Test predictions on model ---
+predict_model = predict(fit_model, dic_test) %>% 
+  bind_cols(dic_test)
+
+# Store accuracy of testing prediction ---
+accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class)
+
+View(accuracy)
 ```

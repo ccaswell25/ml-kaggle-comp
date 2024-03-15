@@ -14,13 +14,14 @@ library(dplyr)
 library(here)
 library(tidyverse)
 library(kernlab)
+library(imputeTS)
 ```
 
 ## Read in the Data:
 
 ```{r warning = FALSE, message = FALSE}
-dic_train <- read_csv(here("train.csv"))
-dic_test <- read_csv(here("test.csv"))
+dic_train <- read_csv(here("train.csv")) %>% select(-...13)
+dic_test <- read_csv(here("test.csv")) %>% drop_na()
 ```
 
 ## Explore the Data:
@@ -32,6 +33,24 @@ head(dic_train)
 glimpse(dic_train)
 ```
 
+```{r}
+# make plot to visualize data
+
+ggplot(data = dic_train, aes(x = Lon_Dec, y = Lat_Dec, color = DIC)) +
+  geom_point() +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Dissolved Inorganic Carbon (DIC) Visualization",
+       x = "Longitude",
+       y = "Latitude",
+       color = "DIC") +
+  theme_minimal()
+
+```
+
+
+
+
+
 ## Choose Model Algorithm:
 
 We chose...... because ......
@@ -39,12 +58,15 @@ We chose...... because ......
 #Options: KNN, RF, Decision Tree, Clustering, Bagged Tree, Boosted Tree, SVM, Neural Net
 ```
 
+
+# Random Forest
+
 ## Pre-Processing:
 
-```{r warning = FALSE, message = FALSE}
+```{r  RF pre-processing, warning = FALSE, message = FALSE}
 # Create the recipe ---
 dic_rec <- recipe(DIC ~ ., data = dic_train) %>% 
-  step_zv(all_predictors()) %>% #is this needed?
+  #step_zv(all_predictors()) %>% #is this needed?
   step_center(all_numeric_predictors()) %>% 
   step_scale(all_numeric_predictors())
   
@@ -62,35 +84,124 @@ dic_workflow = workflow() %>%
 
 ## Tune Relevant Parameters (Cross validation):
 
-```{r warning = FALSE, message = FALSE}
+```{r Rf tuning, warning = FALSE, message = FALSE}
 #Creating folds for cross validation ---
 set.seed(1234)
 folds <-vfold_cv(dic_train, strata = DIC)
 
 #Set up Grid ---
 #which one to use will depend on our model....?
-grid <- grid_regular(cost(), levels = 10)
-grid <- expand.grid(learn_rate = seq(0.0001, 0.3, length.out = 30))
-grid <- grid_latin_hypercube(trees(),
-                                  tree_depth(),
-                                  loss_reduction(),
-                                  min_n(),
-                                  size = 10)
+#grid <- grid_regular(cost(), levels = 10)
+#grid <- expand.grid(learn_rate = seq(0.0001, 0.3, length.out = 30))
+#grid <- grid_latin_hypercube(trees(),
+                                  # tree_depth(),
+                                  # loss_reduction(),
+                                  # min_n(),
+                                  # size = 10)
 
 #Tune the Model ---
 fit_dic <- dic_workflow %>% 
 tune_grid(
   resamples = folds,
- grid = grid) 
+ grid = 10) 
+
+collect_metrics(fit_dic)
+
+
+
+```
+
+```{r RF plot best fit}
+autoplot(fit_dic) # examine how different parameter configurations relate to accuracy 
+show_best(fit_dic) # show top models and performance estimatesautoplot(tree_rs) # examine how different
+```
+
+
+
+## Final Predictions:
+
+```{r random forest predictions , warning = FALSE, message = FALSE}
+# Final Predictions ---
+# Finalizing workflow with best metrics ---
+best_model_params = dic_workflow %>% 
+  finalize_workflow(select_best(fit_dic, metric = "rmse"))
+
+# Fit the model to the training set ---
+ fit_model = fit(best_model_params, dic_train)
+
+# Test predictions on model ---
+predict_model = predict(fit_model, dic_test) %>% 
+  bind_cols(dic_test)
+
+# Store accuracy of testing prediction ---
+accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class)
+
+print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with this model."))
+
+```
+
+
+
+
+
+
+# Decision Tree
+
+## Pre-Processing:
+
+
+```{r decision tree pre-processing}
+  
+# initialize model with tuning parameters
+tree_spec_tune <- decision_tree(
+  cost_complexity = tune(),
+  tree_depth = tune(),
+  min_n = tune()
+) %>% 
+  set_engine("rpart") %>% #set engine to rapart
+  set_mode("regression") # set mode to regression
+
+#create tree grid with tuning parameteres and 5 levels
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 5)
+```
+
+
+## Tune Relevant Parameters (Cross validation):
+
+
+```{r decision tree workflow}
+#specify 10 fold cross validation
+
+#create worflow with recipe and tuning specs
+wf_dt_tune <- workflow() %>% 
+  add_recipe(dic_rec) %>% 
+  add_model(tree_spec_tune)
+
+
+doParallel::registerDoParallel()  #build trees in parallel
+system.time(
+    tree_dic <- tune_grid(
+      wf_dt_tune,
+      resamples = folds,
+      grid = tree_grid,
+      metrics = metric_set(accuracy)
+)
+)
+
+
+
+autoplot(tree_rs) # examine how different parameter configurations relate to accuracy 
+show_best(tree_rs) # show top models and performance estimatesautoplot(tree_rs) # examine how different parameter configurations relate to accuracy 
+show_best(tree_rs) # show top models and performance estimates
 ```
 
 ## Final Predictions:
 
-```{r warning = FALSE, message = FALSE}
+```{r decision tree predictions , warning = FALSE, message = FALSE}
 # Final Predictions ---
 # Finalizing workflow with best metrics ---
 best_model_params = dic_workflow %>% 
-  finalize_workflow(select_best(fit_dic, metric = "accuracy"))
+  finalize_workflow(select_best(fit_dic, metric = "rmse"))
 
 # Fit the model to the training set ---
  fit_model = fit(best_model_params, dic_train)

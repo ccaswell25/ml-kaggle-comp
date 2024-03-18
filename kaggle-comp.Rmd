@@ -14,14 +14,18 @@ library(dplyr)
 library(here)
 library(tidyverse)
 library(kernlab)
-library(imputeTS)
 ```
 
 ## Read in the Data:
 
 ```{r warning = FALSE, message = FALSE}
+#annie's
 dic_train <- read_csv(here("train.csv")) %>% select(-...13)
 dic_test <- read_csv(here("test.csv")) %>% drop_na()
+
+#carly's
+dic_train <- read_csv(here("ml-kaggle-comp", "train.csv")) %>% select(-...13)
+dic_test <- read_csv(here("ml-kaggle-comp", "test.csv")) %>% drop_na()
 ```
 
 ## Explore the Data:
@@ -34,7 +38,7 @@ glimpse(dic_train)
 ```
 
 ```{r}
-# make plot to visualize data
+# Plotting to visualize data ---
 
 ggplot(data = dic_train, aes(x = Lon_Dec, y = Lat_Dec, color = DIC)) +
   geom_point() +
@@ -111,7 +115,8 @@ collect_metrics(fit_dic)
 
 ```
 
-```{r RF plot best fit}
+```{r RF plot best fit, warning = FALSE, message = FALSE}
+# Visualizing results ---
 autoplot(fit_dic) # examine how different parameter configurations relate to accuracy 
 show_best(fit_dic) # show top models and performance estimatesautoplot(tree_rs) # examine how different
 ```
@@ -142,7 +147,7 @@ print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with thi
 
 
 
-
+# NOT NEEDED:
 
 
 # Decision Tree
@@ -158,7 +163,7 @@ tree_spec_tune <- decision_tree(
   tree_depth = tune(),
   min_n = tune()
 ) %>% 
-  set_engine("rpart") %>% #set engine to rapart
+  set_engine("rpart") %>% #set engine to rpart
   set_mode("regression") # set mode to regression
 
 #create tree grid with tuning parameteres and 5 levels

@@ -23,9 +23,6 @@ library(kernlab)
 dic_train <- read_csv(here("train.csv")) %>% select(-...13)
 dic_test <- read_csv(here("test.csv")) %>% drop_na()
 
-#carly's
-dic_train <- read_csv(here("ml-kaggle-comp", "train.csv")) %>% select(-...13)
-dic_test <- read_csv(here("ml-kaggle-comp", "test.csv")) %>% drop_na()
 ```
 
 ## Explore the Data:
@@ -40,13 +37,13 @@ glimpse(dic_train)
 ```{r}
 # Plotting to visualize data ---
 
-ggplot(data = dic_train, aes(x = Lon_Dec, y = Lat_Dec, color = DIC)) +
-  geom_point() +
-  scale_color_gradient(low = "blue", high = "red") +
+ggplot(data = dic_train, aes(x = Lon_Dec, y = Lat_Dec, color = DIC)) + # initiate ggplot and add variables
+  geom_point() + # add scatter points
+  scale_color_gradient(low = "blue", high = "red") + # create end of color gradient
   labs(title = "Dissolved Inorganic Carbon (DIC) Visualization",
-       x = "Longitude",
-       y = "Latitude",
-       color = "DIC") +
+       x = "Longitude", # x axis label
+       y = "Latitude", # y axis label
+       color = "DIC") + # legend label
   theme_minimal()
 
 ```
@@ -57,10 +54,8 @@ ggplot(data = dic_train, aes(x = Lon_Dec, y = Lat_Dec, color = DIC)) +
 
 ## Choose Model Algorithm:
 
-We chose...... because ......
-```{r warning = FALSE, message = FALSE}
-#Options: KNN, RF, Decision Tree, Clustering, Bagged Tree, Boosted Tree, SVM, Neural Net
-```
+We chose Random Forest because it achieved results with fairly low computational time, while not undermining results. 
+
 
 
 # Random Forest
@@ -70,14 +65,13 @@ We chose...... because ......
 ```{r  RF pre-processing, warning = FALSE, message = FALSE}
 # Create the recipe ---
 dic_rec <- recipe(DIC ~ ., data = dic_train) %>% 
-  #step_zv(all_predictors()) %>% #is this needed?
-  step_center(all_numeric_predictors()) %>% 
-  step_scale(all_numeric_predictors())
+  step_center(all_numeric_predictors()) %>%  # center to mean of 0
+  step_scale(all_numeric_predictors()) # scale to sd of 1
   
 # Preprocessing ---
-dic_model <- rand_forest(mtry = tune(), trees = tune()) %>% #this will change depending on what model we choose
-  set_engine("randomForest") %>% #this will change depending on what model we choose
-  set_mode("regression")
+dic_model <- rand_forest(mtry = tune(), trees = tune()) %>% #specify random forest as model
+  set_engine("randomForest") %>% #random forest as engine
+  set_mode("regression") # regression as opposed to classification since we are trying to predict dic
 
 # Specifying Workflow ---
 dic_workflow = workflow() %>% 
@@ -91,25 +85,16 @@ dic_workflow = workflow() %>%
 ```{r Rf tuning, warning = FALSE, message = FALSE}
 #Creating folds for cross validation ---
 set.seed(1234)
-folds <-vfold_cv(dic_train, strata = DIC)
+folds <-vfold_cv(dic_train, strata = DIC) # create folds for cross validation
 
-#Set up Grid ---
-#which one to use will depend on our model....?
-#grid <- grid_regular(cost(), levels = 10)
-#grid <- expand.grid(learn_rate = seq(0.0001, 0.3, length.out = 30))
-#grid <- grid_latin_hypercube(trees(),
-                                  # tree_depth(),
-                                  # loss_reduction(),
-                                  # min_n(),
-                                  # size = 10)
 
 #Tune the Model ---
-fit_dic <- dic_workflow %>% 
+fit_dic <- dic_workflow %>%  
 tune_grid(
-  resamples = folds,
- grid = 10) 
+  resamples = folds, # resample with cross validation
+ grid = 10) # set grid = 10 for tuning
 
-collect_metrics(fit_dic)
+collect_metrics(fit_dic) # look at results 
 
 
 
@@ -118,7 +103,7 @@ collect_metrics(fit_dic)
 ```{r RF plot best fit, warning = FALSE, message = FALSE}
 # Visualizing results ---
 autoplot(fit_dic) # examine how different parameter configurations relate to accuracy 
-show_best(fit_dic) # show top models and performance estimatesautoplot(tree_rs) # examine how different
+show_best(fit_dic) # show top models and performance
 ```
 
 
@@ -129,17 +114,17 @@ show_best(fit_dic) # show top models and performance estimatesautoplot(tree_rs) 
 # Final Predictions ---
 # Finalizing workflow with best metrics ---
 best_model_params = dic_workflow %>% 
-  finalize_workflow(select_best(fit_dic, metric = "rmse"))
+  finalize_workflow(select_best(fit_dic, metric = "rmse")) # finalize workflow based on best rmse
 
 # Fit the model to the training set ---
- fit_model = fit(best_model_params, dic_train)
+ fit_model = fit(best_model_params, dic_train) # fit model
 
 # Test predictions on model ---
-predict_model = predict(fit_model, dic_test) %>% 
-  bind_cols(dic_test)
+predict_model = predict(fit_model, dic_test) %>%  # predict on test data
+  bind_cols(dic_test) # add predict column to dic_test
 
 # Store accuracy of testing prediction ---
-accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class)
+accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class) # get accuracy from ground truth 
 
 print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with this model."))
 
@@ -147,77 +132,3 @@ print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with thi
 
 
 
-# NOT NEEDED:
-
-
-# Decision Tree
-
-## Pre-Processing:
-
-
-```{r decision tree pre-processing}
-  
-# initialize model with tuning parameters
-tree_spec_tune <- decision_tree(
-  cost_complexity = tune(),
-  tree_depth = tune(),
-  min_n = tune()
-) %>% 
-  set_engine("rpart") %>% #set engine to rpart
-  set_mode("regression") # set mode to regression
-
-#create tree grid with tuning parameteres and 5 levels
-tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 5)
-```
-
-
-## Tune Relevant Parameters (Cross validation):
-
-
-```{r decision tree workflow}
-#specify 10 fold cross validation
-
-#create worflow with recipe and tuning specs
-wf_dt_tune <- workflow() %>% 
-  add_recipe(dic_rec) %>% 
-  add_model(tree_spec_tune)
-
-
-doParallel::registerDoParallel()  #build trees in parallel
-system.time(
-    tree_dic <- tune_grid(
-      wf_dt_tune,
-      resamples = folds,
-      grid = tree_grid,
-      metrics = metric_set(accuracy)
-)
-)
-
-
-
-autoplot(tree_rs) # examine how different parameter configurations relate to accuracy 
-show_best(tree_rs) # show top models and performance estimatesautoplot(tree_rs) # examine how different parameter configurations relate to accuracy 
-show_best(tree_rs) # show top models and performance estimates
-```
-
-## Final Predictions:
-
-```{r decision tree predictions , warning = FALSE, message = FALSE}
-# Final Predictions ---
-# Finalizing workflow with best metrics ---
-best_model_params = dic_workflow %>% 
-  finalize_workflow(select_best(fit_dic, metric = "rmse"))
-
-# Fit the model to the training set ---
- fit_model = fit(best_model_params, dic_train)
-
-# Test predictions on model ---
-predict_model = predict(fit_model, dic_test) %>% 
-  bind_cols(dic_test)
-
-# Store accuracy of testing prediction ---
-accuracy <- accuracy(predict_model, truth = DIC, estimate = .pred_class)
-
-print(paste0("I get an accuracy measure of ", round(accuracy[,3], 2), " with this model."))
-
-```
